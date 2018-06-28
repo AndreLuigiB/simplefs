@@ -320,12 +320,15 @@ int fs_mount()
 		for(int j = 0; j < INODES_PER_BLOCK; j++)
 		{
 			//adiciona uma posição no mapa de inodos;
-			//inodemap.push_back(0);
+			inodemap.push_back(0);
 			//se o inodo atual for válido:
 			if(i_block.inode[j].isvalid)
 			{	
-				//salva o bloco do inodo
-				//inodemap[i-1+j]=i;                 			<------ O Leal tinha me dito que criou esse mapa de inodos, não sei se é necessário, confira isso por favor!
+				/* salva o bloco do inodo */
+				inodemap[(i-1)*POINTERS_PER_INODE+j]=i;               
+				/* Deixei e arrumei! ^^	<------ O Leal tinha me dito que criou esse mapa de inodos, 
+				não sei se é necessário, confira isso por favor! */
+				
 				//percorre os blocos diretos:
 				for(int k=0; k<POINTERS_PER_INODE; k++)
 				{
