@@ -42,12 +42,28 @@ union fs_block {
 };
 
 //variável que assinala se o sistema está ou não mantado:
-volatile bool _mounted;
+volatile bool _mounted = false;
+
+/*
+ *
+ * Convenção:
+ *	false: livre
+ *	true: ocupado
+ *
+ */
+
 //mapa de bits do disco:
 vector<bool> bitmap;
-//mapa dos inodos:
-//vector<int> inodemap;
 
+/*
+ * 
+ * Mapa dos inodos:
+ * guarda a posicao da memoria pra onde esse inodo aponta.
+ * 	Se tiver 0: inodo livre
+ * 	Se for diferente: inodo valido e contem bloco onde esta inserido
+ *
+ */
+vector<int> inodemap;
 /* carrega o seguinte inode da memoria */
 void inode_load( int inumber, struct fs_inode *inode_ler ) {
 	/* inode alocado */
