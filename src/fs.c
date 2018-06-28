@@ -64,6 +64,8 @@ vector<bool> bitmap;
  *
  */
 vector<int> inodemap;
+
+
 /* carrega o seguinte inode da memoria */
 void inode_load( int inumber, struct fs_inode *inode_ler ) {
 	/* inode alocado */
@@ -123,17 +125,63 @@ void inode_save( int inumber, struct fs_inode inode_esc ) {
  * Tambem, uma tentativa de formatar um disco que ja foi montado n~ao deve fazer nada e retornar falha.
  *
  */
-int fs_format()
-{
+int fs_format() {
+	/* Verifica se está montado: */
+	if (_mounted)
+	{
+		/* retorna insucesso: */
+		return 0;
+	}
+	
+	int i,j;
+	
+	/* numero de blocos do disco */
 	int tamanho = disk_size();
-	/* tamanho para inodos */
-	//int tamanho_inodos = tamanho/10;
-	union fs_block bloco0;
-	disk_read(0,bloco0.data);
-	//int magico = bloco0.super.magic;
-	/* Fazer todos os i-nodes serem invalidos */
+	/* 
+	 * tamanho para inodos
+	 * Se tiver dez ou menos blocos entao reserva um para inodes
+	 */
+	int tamanho_inodos = (tamanho>=10)?tamanho/10:1;
+	
+	
+	
+	/* novo bloco inicial */
+	union fs_block novobloco0;
+	
+	/* setando informacoes do novo disco */
+	novobloco0.super.magic = FS_MAGIC;
+	novobloco0.super.nblocks = tamanho;
+	novobloco0.super.ninodeblocks = tamanho_inodos;
+	novobloco0.super.ninodes = 0;
+	
+	/* Fazer todos os i-nodes do disco serem invalidos */
+	union fs_block antigobloco0;
+	union fs_block antigoinodeblock;
+	union fs_block bloco_inodes;
+	
+	/* faz leitura do antigo bloco 0 */
+	disk_read(0,antigobloco0.data);
+	
+	/* percorre todos os blocos de inodes */
+	for (i = 1; i < (antigobloco0.ninodeblocks+1) i++) {
+		/* faz leitura do bloco de inodes */
+		disk_read(i,bloco_inodes.data);
+		
+		/* percorre todos os inodos no bloco */
+		for (j = 0; j < INODES_PER_BLOCK; j++) {
+			/* faz o inode ser invalido */
+			bloco_inodes.inode[j].isvalid = 0;
+		}
+		
+		/* escreve o novo bloco de inodes */
+		disk_write(i,bloco_inodes.data);
+	}
+	
+	/* escreve o superbloco */
+	disk_write(0,novobloco0.data);
+	
 
-	return 0;
+	return 1;
 }
 
 /*
