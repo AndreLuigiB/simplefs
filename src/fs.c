@@ -365,6 +365,11 @@ int fs_mount()
 	return 1;
 }
 
+/*
+ * Cria um novo inodo de comprimento zero. Em caso de sucesso, retorna o inumero (positivo). Em
+ * caso de falha, retorna zero. (Note que isto implica que zero não pode ser um inumero valido.)
+ * 
+ */
 int fs_create()
 {
 
@@ -423,21 +428,47 @@ int fs_create()
 	return 0;
 }
 
+/*
+ * Deleta o inodo indicado pelo inumero. Libera todo o dado e blocos indiretos atribuidos a este
+ * inodo e os retorna ao mapa de blocos livres. Em caso de sucesso, retorna um. Em caso de falha, returna
+ * 0.
+ * 
+ */
 int fs_delete( int inumber )
 {
 	return 0;
 }
 
+/*
+ * Retorna o tamanho logico do inodo especificado, em bytes. Note que zero e um tamanho logico
+ * valido para um inodo! Em caso de falha, retorna -1.
+ * 
+ */
 int fs_getsize( int inumber )
 {
 	return -1;
 }
 
+/*
+ * L^e dado de um inodo valido. Copia \length" bytes do inodo para dentro do ponteiro \data",
+ * comecando em \oset" no inodo. Retorna o numero total de bytes lidos. O Numero de bytes efetivamente
+ * lidos pode ser menos que o numero de bytes requisitados, caso o fim do inodo seja alcancado. Se o inumero
+ * dado for invalido, ou algum outro erro for encontrado, retorna 0.
+ * 
+ */
 int fs_read( int inumber, char *data, int length, int offset )
 {
 	return 0;
 }
 
+/*
+ * Escreve dado para um inodo valido. Copia \length" bytes do ponteiro \data" para o inodo
+ * comecando em \offset" bytes. Aloca quaisquer blocos diretos e indiretos no processo. Retorna o numero
+ * de bytes efetivamente escritos. O numero de bytes efetivamente escritos pode ser menor que o numero de
+ * bytes requisitados, caso o disco se torne cheio. Se o inumero dado for invalido, ou qualquer outro erro for
+ * encontrado, retorna 0.
+ * 
+ */
 int fs_write( int inumber, const char *data, int length, int offset )
 {
 	return 0;
