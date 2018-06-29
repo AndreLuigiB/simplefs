@@ -446,7 +446,20 @@ int fs_delete( int inumber )
  */
 int fs_getsize( int inumber )
 {
-	return -1;
+	//Verifica se está montado:
+	if (!_mounted)
+	{
+		//retorna insucesso:
+		return -1;
+	}
+	/* blocos utilizados */
+	struct fs_block bloco0;
+	struct fs_block inode_block;
+	/* leitura do primeiro bloco */
+	disk_read(0,bloco0.data);
+	/* faz a leitura do bloco no bitmap */
+	disk_read(inodemap[inumber],inode_block.data);
+	
 }
 
 /*
