@@ -560,11 +560,12 @@ int fs_getsize( int inumber )
  */
 int fs_read( int inumber, char *data, int length, int offset )
 {
-	/* Verifica: se esta montado,se data e valido, se o comprimento e valido e tambem o offset */
-	if (!_mounted || data == NULL || length <= 0 || offset < 0) return 0;
+	/* Verifica: se esta montado,se data e valido, se o comprimento e valido, inodo valido e tambem o offset */
+	if (!_mounted || data == NULL || length <= 0 || offset < 0 || inumber <= 0) return 0;
 	struct fs_inode analisado;
 	union fs_block direct;
-	union fs_block indirect;
+	union fs_block indirect_base;
+	union fs_block indirect_block;
 	/* quantos bytes faltam */
 	int remanescente = length;
 	/* posicao em que estou escrevendo */
@@ -574,35 +575,89 @@ int fs_read( int inumber, char *data, int length, int offset )
 	
 	/* Recebe o inodo analisado */
 	inode_load(inumber,&analisado);
-
+	//cout << "." << endl;
 	/* Se a leitura for maior que o tamanho de blocos do inodo retorna falha: */
-	if (length > analisado.size*DISK_BLOCK_SIZE) return 0;
+	if (length > analisado.size) {
+		length = analisado.size;
+		remanescente = length;
+		length -= offset;
+	}
+	else if (length > (analisado.size - offset)) {
+		length = analisado.size - offset;
+	}
 
-	/* Percorre os blocos diretos do inodo */
-	for (i = 0; i < POINTERS_PER_INODE; i++) {
+	//cout << length;
+	/* Mesma coisa pro offset */
+	//cout << "Offset vale " << offset << " e o tamanho do arquivo analisado e " << analisado.size << endl;
+	if (offset >= analisado.size) return 0;
+
+	/* valor inicial de i */
+	int i0 = offset/DISK_BLOCK_SIZE;
+	/* posicao inicial que procura */
+	pos = offset%DISK_BLOCK_SIZE;
+
+	/* se o bloco for menor que o numero de ponteiros */
+	if (i0 < POINTERS_PER_INODE) {
+		/* Percorre os blocos diretos do inodo */
+		for (i = i0; i < POINTERS_PER_INODE; i++) {
+			/* Se nao tem mais remanescente acaba a funcao com sucesso */
+			if (remanescente == 0) return (length - remanescente);  
+
+			/* Verifica se o bloco e valido */
+			if (analisado.direct[i] > 0) {
+				/* Faz a leitura do bloco */
+				disk_read(analisado.direct[i],direct.data);
+				/* Se o tamanho e menor que o tamanho do bloco */
+				if (remanescente < DISK_BLOCK_SIZE) {
+					/* Pega "remanescente" bytes do direct */
+					//cout << "\nCopiando " << remanescente << " bytes do bloco direto " << analisado.direct[i] << endl;
+					copy(direct.data,direct.data+remanescente,data+pos);
+					return (length);
+				}
+				else {
+					//cout << "\nCopiando " << DISK_BLOCK_SIZE << " bytes do bloco direto " << analisado.direct[i] << endl;
+				}
+				/* Faz a copia do bloco inteiro para o ponteiro */
+				copy(direct.data,direct.data+DISK_BLOCK_SIZE,data+pos);
+				pos += DISK_BLOCK_SIZE;
+				remanescente -= DISK_BLOCK_SIZE;
+			}
+		}
+	}
+	/* desconta os blocos de inodo de i0 */
+	i0 -= POINTERS_PER_INODE;
+	//cout << "Faltam " << remanescente << "bytes para ler.\n";
+	/* Se nao tem blocos indiretos finaliza */
+	if (analisado.indirect <= 0) return (length-remanescente);
+	/* Se chegou aqui ja percorreu todos os blocos diretos. Pega os indiretos */
+	/* Faz a leitura do bloco de indirecao */
+	disk_read(analisado.indirect,indirect_base.data);
+	/* Percorre todos os blocos indiretos */
+	for (i = 0; i < POINTERS_PER_BLOCK; i++) {
 		/* Se nao tem mais remanescente acaba a funcao com sucesso */
-		if (remanescente == 0) return 1;  
-
-		/* Verifica se o bloco e valido */
-		if (analisado.direct[i] != 0) {
-			/* Faz a leitura do bloco */
-			disk_read(analisado.direct[i],direct.data);
-			/* Se o tamanho e menor que o tamanho do bloco */
+		if (remanescente == 0) return length; 
+		/* Verifica se e um bloco valido */
+		if (indirect_base.pointers[i] > 0) {
+			/* faz a leitura do bloco */
+			disk_read(indirect_base.pointers[i],indirect_block.data);
+			/* Se o tamanho que falta e menor que o tamanho do bloco */
 			if (remanescente < DISK_BLOCK_SIZE) {
 				/* Pega "remanescente" bytes do direct */
-				copy(direct.data,direct.data+remanescente,data+pos);
-				return 1;
+				//cout << "\nCopiando " << remanescente << " bytes do bloco indireto " << indirect_base.pointers[i] << endl;
+				copy(indirect_block.data,indirect_block.data+remanescente,data+pos);
+				return (length);
+			}
+			else {
+				//cout << "\nCopiando " << DISK_BLOCK_SIZE << " bytes do bloco indireto " << indirect_base.pointers[i] << endl;
 			}
 			/* Faz a copia do bloco inteiro para o ponteiro */
-			copy(direct.data,direct.data+DISK_BLOCK_SIZE,data+pos);
+			copy(indirect_block.data,indirect_block.data+DISK_BLOCK_SIZE,data+pos);
 			pos += DISK_BLOCK_SIZE;
 			remanescente -= DISK_BLOCK_SIZE;
 		}
-
 	}
-	/* Se chegou aqui ja percorreu todos os blocos diretos. Pega os indiretos */
-	
-	return 0;
+	//cout << "retornou " << length  << endl;
+	return (length);
 }
 
 /*
