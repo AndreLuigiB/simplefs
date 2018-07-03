@@ -41,6 +41,11 @@ union fs_block {
 	char data[DISK_BLOCK_SIZE];
 };
 
+struct im_elem {
+	int bloco_im;
+	bool im_valid;
+};
+
 //variável que assinala se o sistema está ou não mantado:
 volatile bool _mounted = false;
 
@@ -63,8 +68,42 @@ vector<bool> bitmap;
  * 	Se for diferente: inodo valido e contem bloco onde esta inserido
  *
  */
-vector<int> inodemap;
+vector<im_elem> inodemap;
 
+
+void printinodemap() {
+	int i;
+	cout << "\n inodemap: ";
+	for (i = 0; i < inodemap.size(); i++) {
+		cout << ((inodemap[i].im_valid == true)?1:0) << " ";
+	}
+	cout << endl << endl;
+}
+
+void printbitmap() {
+	int i;
+	cout << "\n block bitmap: ";
+	for (i = 0; i < bitmap.size(); i++) {
+		cout << ((bitmap[i] == true)?1:0) << " ";
+	}
+	cout << endl << endl;
+}
+
+int buscatamanho( int inumber ) {
+	/* blocos utilizados */
+	union fs_block inode_block;
+	union fs_block direto;
+	int indice;
+	int i,j;
+	/* leitura do bloco de inodes */
+	disk_read(inodemap[inumber].bloco_im,inode_block.data);
+	indice = inumber - INODES_PER_BLOCK*inodemap[inumber].bloco_im;
+	/* Faz a leitura dos blocos diretos do arquivo */
+	for (i = 0; i < POINTERS_PER_INODE; i++) {
+		
+	}
+	return 0;
+}
 
 /* carrega o seguinte inode da memoria */
 void inode_load( int inumber, struct fs_inode *inode_ler ) {
@@ -163,7 +202,7 @@ int fs_format() {
 	disk_read(0,antigobloco0.data);
 	
 	/* percorre todos os blocos de inodes */
-	for (i = 1; i < (antigobloco0.ninodeblocks+1) i++) {
+	for (i = 1; i < (antigobloco0.super.ninodeblocks+1); i++) {
 		/* faz leitura do bloco de inodes */
 		disk_read(i,bloco_inodes.data);
 		
@@ -196,15 +235,19 @@ void fs_debug()
 	/* Bloco inicial */
 	union fs_block block;
 	/* vetor com os outros blocos na memoria */
-	union fs_block *block_vec;
+	union fs_block block_vec;
 	/* le a parte zero que e o superbloco */
 	disk_read(0,block.data);
 
-	cout<<endl<<"\t--->\tDebug:"<<endl;
 	if (_mounted)
 	{
 		cout<<"FS mounted"<<endl;
 	}else cout<<endl<<"FS not mounted"<<endl;
+	
+	printinodemap();
+	printbitmap();
+	
+	cout<<endl<<"-->Debug:"<<endl;
 
 	cout<<"superblock:"<<endl;
 	cout<<"    "<<block.super.nblocks<<" blocks"<<endl;
@@ -212,29 +255,27 @@ void fs_debug()
 	cout<<"    "<<block.super.ninodes<<" inodes"<<endl;;
 
 
-	/* Aloca os espacos dos blocos para o vetor de blocos de inodes */
-	block_vec = new union fs_block[block.super.ninodeblocks];
 	int i,j,k;
 	int num_inodos_percorridos = 0;
 	/* percorre todos os blocos que contem inodes. Comeca do 1 pq o 0 e o superbloco */
 	for (i = 0; i < block.super.ninodeblocks; i++) {
 		/* Coloca o valor do disco no vetor de blocos */
 		/* le a porcao i+1 pq ja foi lida a porcao 0 */
-		disk_read(i+1,block_vec[i].data);
+		disk_read(i+1,block_vec.data);
 
 		/* percorre todos os inodos do bloco */
 		for (j = 0; j < INODES_PER_BLOCK; j++) {
 			/* Verifica se o inodo e valido */
-			if (block_vec[i].inode[j].isvalid) {
+			if (block_vec.inode[j].isvalid) {
 				cout << "inode " << num_inodos_percorridos << ": " << endl;
 				/* Escreve o tamanho */
-				cout << "\tsize: " << block_vec[i].inode[j].size << " bytes" << endl;
+				cout << "\tsize: " << block_vec.inode[j].size << " bytes" << endl;
 
 				/* Escreve quais sao os blocos diretos */
 				cout << "\tdirect blocks:"<<endl;
 				for (k = 0; k < POINTERS_PER_INODE; k++) {
 					/* Se o numero for zero não exibe. */
-					if (block_vec[i].inode[j].direct[k] != 0) cout << "\t\t" << block_vec[i].inode[j].direct[k]<<endl;
+					if (block_vec.inode[j].direct[k] != 0) cout << "\t\t" << block_vec.inode[j].direct[k]<<endl;
 				}
 				cout << endl;
 
@@ -243,11 +284,11 @@ void fs_debug()
 				/* com ponteiros para os outros blocos */
 
 				/* Verifica se existem blocos indiretos */
-				if (block_vec[i].inode[j].indirect != 0) {
+				if (block_vec.inode[j].indirect != 0) {
 					/* bloco de indirecao */
 					union fs_block bloco_indirecao;
 					/* Efetua a leitura */
-					disk_read(block_vec[i].inode[j].indirect,bloco_indirecao.data);
+					disk_read(block_vec.inode[j].indirect,bloco_indirecao.data);
 
 					/* Numero de ponteiros validos */
 					int num_ponteiros = 0;
@@ -258,7 +299,7 @@ void fs_debug()
 					}
 
 					/* Mostra qual e o bloco de indirecao */
-					cout << "\tindirect block: " << block_vec[i].inode[j].indirect << endl;
+					cout << "\tindirect block: " << block_vec.inode[j].indirect << endl;
 
 					/* So exibe o proximo se bloco de indirecao tiver um ponteiro valido */
 					if (num_ponteiros > 0) {
@@ -279,7 +320,6 @@ void fs_debug()
 		if (num_inodos_percorridos == block.super.ninodes) break;
 	}
 
-	delete block_vec;
 }
 
 /*
@@ -295,6 +335,7 @@ int fs_mount()
 	fs_block s_block; //superbloco
 	fs_block i_block; //bloco de inode
 	fs_block id_block;//bloco indireto
+	
 
 	//Lê o primeiro bloco (super bloco):
  	disk_read(0, s_block.data);
@@ -312,6 +353,13 @@ int fs_mount()
 		//salva eles no mapa de blocos:
 		bitmap[i]=true;
 	}
+	
+	/* Adiciona o inode zero ocupado no bitmap */
+	struct im_elem elem0;
+	elem0.bloco_im = 0;
+	elem0.im_valid = true;
+	inodemap.push_back(elem0);
+	
 	//percorrer os blocos de inodo:
 	for(i=1; i<(s_block.super.ninodeblocks+1); i++)
 	{
@@ -319,13 +367,17 @@ int fs_mount()
 		//percorre o inodo atual:
 		for(int j = 0; j < INODES_PER_BLOCK; j++)
 		{
+			struct im_elem novo_elem;
+			novo_elem.im_valid = false;
+			novo_elem.bloco_im = 0;
 			//adiciona uma posição no mapa de inodos;
-			inodemap.push_back(0);
+			inodemap.push_back(novo_elem);
 			//se o inodo atual for válido:
 			if(i_block.inode[j].isvalid)
 			{	
 				/* salva o bloco do inodo */
-				inodemap[(i-1)*POINTERS_PER_INODE+j]=i;               
+				inodemap[(i-1)*POINTERS_PER_INODE+j].bloco_im=i;
+				inodemap[(i-1)*POINTERS_PER_INODE+j].im_valid=true;               
 				/* Deixei e arrumei! ^^	<------ O Leal tinha me dito que criou esse mapa de inodos, 
 				não sei se é necessário, confira isso por favor! */
 				
@@ -342,6 +394,9 @@ int fs_mount()
 				//verifica se existem blocos indiretos:
 				if(i_block.inode[j].indirect>s_block.super.ninodeblocks && i_block.inode[j].indirect<s_block.super.nblocks)
 				{
+					/* Adiciona esse bloco indireto no bitmap */
+					bitmap[i_block.inode[j].indirect] = true;
+					
 					//lê o bloco indireto:
 					disk_read(i_block.inode[j].indirect, id_block.data);
 					for(int k=0; k<POINTERS_PER_BLOCK; k++)
@@ -415,6 +470,8 @@ int fs_create()
 				}
 				//faz o bloco indireto para bloco inválido (esvazia):
 				i_block.inode[j].indirect=0;
+				//faz o bloco zero ser invalido novamente
+				i_block.inode[0].isvalid=false;
 				//salva o inodo em disco:
 				disk_write(i,i_block.data);
 				//retorna sucesso, o número do inodo, pois encontrou um inodo vazio e o criou
@@ -453,13 +510,15 @@ int fs_getsize( int inumber )
 		return -1;
 	}
 	/* blocos utilizados */
-	struct fs_block bloco0;
-	struct fs_block inode_block;
+	union fs_block bloco0;
+	union fs_block inode_block;
 	/* leitura do primeiro bloco */
 	disk_read(0,bloco0.data);
 	/* faz a leitura do bloco no bitmap */
-	disk_read(inodemap[inumber],inode_block.data);
-	
+	disk_read(inodemap[inumber].bloco_im,inode_block.data);
+	int indice = inumber - INODES_PER_BLOCK*inodemap[inumber].bloco_im;
+	/* retorna o parametro size do indice */
+	return inode_block.inode[indice].size;
 }
 
 /*
