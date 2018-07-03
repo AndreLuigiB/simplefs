@@ -2,13 +2,15 @@
 #include "fs.h"
 #include "disk.h"
 //
+/*
 #include <cstdio>
 #include <cstring>
 #include <cstdlib>
 #include <cerrno>
 #include <unistd.h>
-
+*/
 /* editado */
+#include <algorithm>
 #include <iostream>
 #include <vector>
 using namespace std;
