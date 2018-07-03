@@ -110,8 +110,7 @@ int buscatamanho( int inumber ) {
 
 /* carrega o seguinte inode da memoria */
 void inode_load( int inumber, struct fs_inode *inode_ler ) {
-	/* inode alocado */
-	inode_ler = new struct fs_inode;
+	/* nao aloca memoria */
 	/* bloco de leitura */
 	union fs_block leitura;
 
@@ -128,10 +127,10 @@ void inode_load( int inumber, struct fs_inode *inode_ler ) {
 
 	/* efetua a leitura do bloco */
 	disk_read(numbloco,leitura.data);
-	/* aponta inode_ler para a posicao no bloco  */
-	inode_ler = leitura.inode+posicao;
-
+	/* o conteudo de inode_ler recebe o inode do bloco  */
+	*inode_ler = leitura.inode[posicao];
 }
+
 void inode_save( int inumber, struct fs_inode inode_esc ) {
 	/* bloco de escrita */
 	union fs_block escrita;
@@ -561,6 +560,48 @@ int fs_getsize( int inumber )
  */
 int fs_read( int inumber, char *data, int length, int offset )
 {
+	/* Verifica: se esta montado,se data e valido, se o comprimento e valido e tambem o offset */
+	if (!_mounted || data == NULL || length <= 0 || offset < 0) return 0;
+	struct fs_inode analisado;
+	union fs_block direct;
+	union fs_block indirect;
+	/* quantos bytes faltam */
+	int remanescente = length;
+	/* posicao em que estou escrevendo */
+	int pos = offset;
+	/* Acha os ponteiros diretos */
+	int i;
+	
+	/* Recebe o inodo analisado */
+	inode_load(inumber,&analisado);
+
+	/* Se a leitura for maior que o tamanho de blocos do inodo retorna falha: */
+	if (length > analisado.size*DISK_BLOCK_SIZE) return 0;
+
+	/* Percorre os blocos diretos do inodo */
+	for (i = 0; i < POINTERS_PER_INODE; i++) {
+		/* Se nao tem mais remanescente acaba a funcao com sucesso */
+		if (remanescente == 0) return 1;  
+
+		/* Verifica se o bloco e valido */
+		if (analisado.direct[i] != 0) {
+			/* Faz a leitura do bloco */
+			disk_read(analisado.direct[i],direct.data);
+			/* Se o tamanho e menor que o tamanho do bloco */
+			if (remanescente < DISK_BLOCK_SIZE) {
+				/* Pega "remanescente" bytes do direct */
+				copy(direct.data,direct.data+remanescente,data+pos);
+				return 1;
+			}
+			/* Faz a copia do bloco inteiro para o ponteiro */
+			copy(direct.data,direct.data+DISK_BLOCK_SIZE,data+pos);
+			pos += DISK_BLOCK_SIZE;
+			remanescente -= DISK_BLOCK_SIZE;
+		}
+
+	}
+	/* Se chegou aqui ja percorreu todos os blocos diretos. Pega os indiretos */
+	
 	return 0;
 }
 
