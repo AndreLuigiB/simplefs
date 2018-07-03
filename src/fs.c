@@ -427,7 +427,6 @@ int fs_mount()
  */
 int fs_create()
 {
-
 	//Verifica se está montado:
 	if (!_mounted)
 	{
@@ -452,27 +451,27 @@ int fs_create()
 		//le um bloco de inodo:
 		disk_read(i, i_block.data);
 		//percorre o inodo atual:
-		for(int j = 0; j < INODES_PER_BLOCK; j++)
+		for( j = 0; j < INODES_PER_BLOCK; j++)
 		{
 			//se o inodo atual não for válido:
 			if(!i_block.inode[j].isvalid)
 			{
 				//torna ele válido:
 				i_block.inode[j].isvalid=true;
+				//altera seu tamanho para 0:
 				i_block.inode[j].size=0;
-				//salva o bloco do inodo
+				//salva o bloco do inodo no mapa:
 				inodemap[(i-1)*POINTERS_PER_INODE+j].bloco_im=i;
+				//coloca o inodo como ocupado no mapa:
 				inodemap[(i-1)*POINTERS_PER_INODE+j].im_valid=true;   
 				//percorre os blocos diretos:
-				for(int k=0; k<POINTERS_PER_INODE; k++)
+				for( k=0; k<POINTERS_PER_INODE; k++)
 				{
 					//faz ele apontar para bloco inválido (esvazia):
 					i_block.inode[j].direct[k]=0;
 				}
 				//faz o bloco indireto para bloco inválido (esvazia):
 				i_block.inode[j].indirect=0;
-				//faz o bloco zero ser invalido novamente
-				//i_block.inode[0].isvalid=false;
 				//salva o inodo em disco:
 				disk_write(i,i_block.data);
 				//retorna sucesso, o número do inodo, pois encontrou um inodo vazio e o criou
@@ -494,7 +493,36 @@ int fs_create()
  */
 int fs_delete( int inumber )
 {
-	return 0;
+	//Verifica se está montado, se a posição é válida ou se o inodo é válido:
+	if (!_mounted||inumber>=inodemap.size()||!inodemap[inumber].im_valid||inumber==0)
+	{
+		//retorna insucesso:
+		return 0;
+	}
+	int i;		  		//contadores
+	fs_block i_block; 	//bloco de inodo
+	//posição do inodo no bloco:
+	int inodepos = inumber%INODES_PER_BLOCK;
+	//Lê o bloco de inodos:
+	disk_read(inodemap[inumber].bloco_im, i_block.data);
+	//percorre os blocos diretos:
+	for(i=0; i<POINTERS_PER_INODE; i++)
+	{
+		//faz ele apontar para bloco inválido (esvazia):
+		i_block.inode[inodepos].direct[i]=0;
+	}
+	//faz o bloco indireto para bloco inválido (esvazia):
+	i_block.inode[inodepos].indirect=0;
+	//torna ele inválido:
+	i_block.inode[inodepos].isvalid=false;
+	//altera seu tamanho para 0:
+	i_block.inode[inodepos].size=0;
+	//torna ele invalido no mapa de inodo:
+	inodemap[inumber].im_valid=false;   
+	//grava o bloco de inodo:
+	disk_write(inodemap[inumber].bloco_im,i_block.data);
+	//retorna sucesso:
+	return 1;
 }
 
 /*
