@@ -670,5 +670,27 @@ int fs_read( int inumber, char *data, int length, int offset )
  */
 int fs_write( int inumber, const char *data, int length, int offset )
 {
+	if (inumber <= 0 || !_mounted || data == NULL || length <= 0 || offset < 0) return 0;
+	struct fs_inode analisado;
+	union fs_block direct;
+	union fs_block indirect_base;
+	union fs_block indirect_block;
+	cout << "entrou" << endl;
+
+	inode_load(inumber,&analisado);
+	if (!analisado.isvalid) return 0;
+
+	if (length > espacoLivre() || length > (espacoLivre() - offset)) {
+		length = espacoLivre() - offset;
+	}
+
+
+	cout << "tamanho a ser escrito: " << length << endl;
+
+	cout << "tamanho livre: " << espacoLivre() << endl;
+
+
+
+	inode_save(inumber,analisado);
 	return 0;
 }
