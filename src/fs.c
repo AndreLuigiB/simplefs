@@ -74,7 +74,8 @@ vector<im_elem> inodemap;
 void printinodemap() {
 	int i;
 	cout << "\n inodemap: ";
-	for (i = 0; i < inodemap.size(); i++) {
+	cout << "X" << " ";
+	for (i = 1; i < inodemap.size(); i++) {
 		cout << ((inodemap[i].im_valid == true)?1:0) << " ";
 	}
 	cout << endl << endl;
@@ -378,8 +379,7 @@ int fs_mount()
 				/* salva o bloco do inodo */
 				inodemap[(i-1)*POINTERS_PER_INODE+j].bloco_im=i;
 				inodemap[(i-1)*POINTERS_PER_INODE+j].im_valid=true;               
-				/* Deixei e arrumei! ^^	<------ O Leal tinha me dito que criou esse mapa de inodos, 
-				não sei se é necessário, confira isso por favor! */
+				/* Deixei e arrumei! ^^ */
 				
 				//percorre os blocos diretos:
 				for(int k=0; k<POINTERS_PER_INODE; k++)
@@ -461,7 +461,8 @@ int fs_create()
 				i_block.inode[j].isvalid=true;
 				i_block.inode[j].size=0;
 				//salva o bloco do inodo
-				//inodemap[i-1+j]=i;    <------ Conferir se precisa desse mapa de inodos!
+				inodemap[(i-1)*POINTERS_PER_INODE+j].bloco_im=i;
+				inodemap[(i-1)*POINTERS_PER_INODE+j].im_valid=true;   
 				//percorre os blocos diretos:
 				for(int k=0; k<POINTERS_PER_INODE; k++)
 				{
@@ -471,7 +472,7 @@ int fs_create()
 				//faz o bloco indireto para bloco inválido (esvazia):
 				i_block.inode[j].indirect=0;
 				//faz o bloco zero ser invalido novamente
-				i_block.inode[0].isvalid=false;
+				//i_block.inode[0].isvalid=false;
 				//salva o inodo em disco:
 				disk_write(i,i_block.data);
 				//retorna sucesso, o número do inodo, pois encontrou um inodo vazio e o criou
