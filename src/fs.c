@@ -548,6 +548,7 @@ int fs_delete( int inumber )
 	inodemap[inumber].im_valid=false;   
 	//grava o bloco de inodo:
 	disk_write(inodemap[inumber].bloco_im,i_block.data);
+	fs_mount();
 	//retorna sucesso:
 	return 1;
 }
@@ -707,6 +708,7 @@ int fs_write( int inumber, const char *data, int length, int offset )
 	fs_inode inode_block;		//bloco de inodo
 	fs_block indirect_block;	//bloco indiretos
 	fs_block data_block;		//bloco de dados
+	fs_block super_block;		//super bloco;
 	int i ,i0;					//contador
 	int inicial;				//bloco inicial
 	int pos;					//posição inicial
@@ -714,6 +716,8 @@ int fs_write( int inumber, const char *data, int length, int offset )
 	int remanescente;			//quanto falta para ser gravado
 	int capacity;				//capacidade do inodo
 	int nblock;					//numero do novo bloco
+	//lê o superbloco:
+	disk_read(0, super_block.data);
 	//lê o inodo:
 	inode_load(inumber,&inode_block);
 	//verifica se inodo é válido:
@@ -843,12 +847,14 @@ int fs_write( int inumber, const char *data, int length, int offset )
 					disk_write(inode_block.direct[i],data_block.data);
 					cout<<"bloco gravado"<<endl;
 					//atualiza bitmap:
-					bitmap[inode_block.direct[i]] = true;
+					//bitmap[inode_block.direct[i]] = true;
 					//atualiza tamanho do inodo:
 					//inode_block.size=length;
 					//grava o inodo:
-					//inode_save(inumber,inode_block);
+					inode_save(inumber,inode_block);
 					//retorna sucesso:
+					cout<<"saindo"<<endl;
+					cout<<length<<endl;
 					return length;
 				}
 				//se for escrever em mais blocos:
@@ -880,18 +886,18 @@ int fs_write( int inumber, const char *data, int length, int offset )
 					disk_write(inode_block.direct[i],data_block.data);
 					cout<<"bloco gravado"<<endl;
 					//atualiza bitmap:
-					bitmap[inode_block.direct[i]] = true;
+					//bitmap[inode_block.direct[i]] = true;
 				}
 			}
 		}
 		//atualiza o ponto inicial para navegar pelos indiretos:
-		i0 -= POINTERS_PER_INODE;
+		//i0 -= POINTERS_PER_INODE;
 	}
 	//agora percorre os indiretos, se o primeiro for o primeiro ele vem direto pra ca, se não só se não gravou tudo em indireto:
 	for (i=i0; i < POINTERS_PER_INODE; i++){
 		cout<<"entrando nos indiretos  "<<i0<<endl;
 		//verifica se é válido:
-		if (indirect_block.pointers[i] > 0)
+		if(indirect_block.pointers[i]>super_block.super.ninodeblocks && indirect_block.pointers[i]<super_block.super.nblocks) 
 		{
 			//lê o bloco de dado:
 			disk_read(indirect_block.pointers[i],data_block.data);
@@ -922,9 +928,9 @@ int fs_write( int inumber, const char *data, int length, int offset )
 				}
 				//grava bloco no disco:
 				disk_write(inode_block.direct[i],data_block.data);
-				cout<<"bloco copiado"<<endl;
+				cout<<"bloco gravado"<<endl;
 				//atualiza bitmap:
-				bitmap[inode_block.direct[i]] = true;
+				//bitmap[inode_block.direct[i]] = true;
 				//atualiza tamanho do inodo:
 				//inode_block.size=length;
 				//grava o inodo:
@@ -961,7 +967,7 @@ int fs_write( int inumber, const char *data, int length, int offset )
 				disk_write(inode_block.direct[i],data_block.data);
 				cout<<"bloco copiado"<<endl;
 				//atualiza bitmap:
-				bitmap[inode_block.direct[i]] = true;
+				//bitmap[inode_block.direct[i]] = true;
 			}
 		}
 	}
