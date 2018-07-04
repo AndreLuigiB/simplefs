@@ -548,7 +548,6 @@ int fs_delete( int inumber )
 	inodemap[inumber].im_valid=false;   
 	//grava o bloco de inodo:
 	disk_write(inodemap[inumber].bloco_im,i_block.data);
-	fs_mount();
 	//retorna sucesso:
 	return 1;
 }
