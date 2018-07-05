@@ -173,6 +173,8 @@ void inode_save( int inumber, struct fs_inode inode_esc ) {
 	//delete &inode_esc;
 }
 
+
+
 /*
  * Cria um novo sistema de arquivos no disco, destruindo qualquer dado que estiver presente. Reserva
  * dez por cento dos blocos para inodos, libera a tabela de inodos, e escreve o superbloco. Retorna um para
@@ -381,7 +383,7 @@ int fs_mount()
 	{
 		disk_read(i, i_block.data);//le um bloco de inodo
 		//percorre o inodo atual:
-		for(int j = 0; j < INODES_PER_BLOCK; j++)
+		for(j = 0; j < INODES_PER_BLOCK; j++)
 		{
 			struct im_elem novo_elem;
 			novo_elem.im_valid = false;
@@ -397,7 +399,7 @@ int fs_mount()
 				/* Deixei e arrumei! ^^ */
 				
 				//percorre os blocos diretos:
-				for(int k=0; k<POINTERS_PER_INODE; k++)
+				for(k=0; k<POINTERS_PER_INODE; k++)
 				{
 					//se ele apontar para algum bloco válido:
 					if(i_block.inode[j].direct[k]>0 && i_block.inode[j].direct[k]<=s_block.super.nblocks) 
@@ -793,8 +795,12 @@ int fs_write( int inumber, const char *data, int length, int offset )
 		}
 	}
 	//atualiza tamanho do inodo:
-	inode_block.size=capacity;
-	cout<<"fim da alocação \n nova capacidade: "<<capacity<<endl;
+	//inode_block.size=capacity;
+
+	/* Atualiza o tamanho do arquivo se o novo tamanho for maior */
+    if (inode_block.size < offset + length) inode_block.size = offset + length;
+
+	cout<<"fim da alocação \n nova capacidade: "<<inode_block.size<<endl;
 	//salva a informação do inodo:
 	inode_save(inumber,inode_block);
 
