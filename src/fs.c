@@ -603,7 +603,6 @@ int fs_read( int inumber, char *data, int length, int offset )
 	
 	/* Recebe o inodo analisado */
 	inode_load(inumber,&analisado);
-	//cout << "." << endl;
 	/* Se a leitura for maior que o tamanho de blocos do inodo retorna falha: */
 	if (length > analisado.size) {
 		length = analisado.size;
@@ -614,9 +613,8 @@ int fs_read( int inumber, char *data, int length, int offset )
 		length = analisado.size - offset;
 	}
 
-	//cout << length;
+	
 	/* Mesma coisa pro offset */
-	//cout << "Offset vale " << offset << " e o tamanho do arquivo analisado e " << analisado.size << endl;
 	if (offset >= analisado.size) return 0;
 
 	/* valor inicial de i */
@@ -638,7 +636,6 @@ int fs_read( int inumber, char *data, int length, int offset )
 				/* Se o tamanho e menor que o tamanho do bloco */
 				if (remanescente < DISK_BLOCK_SIZE) {
 					/* Pega "remanescente" bytes do direct */
-					//cout << "\nCopiando " << remanescente << " bytes do bloco direto " << analisado.direct[i] << endl;
 					copy(direct.data,direct.data+remanescente,data+pos);
 					return (length);
 				}
@@ -654,7 +651,6 @@ int fs_read( int inumber, char *data, int length, int offset )
 	}
 	/* desconta os blocos de inodo de i0 */
 	i0 -= POINTERS_PER_INODE;
-	//cout << "Faltam " << remanescente << "bytes para ler.\n";
 	/* Se nao tem blocos indiretos finaliza */
 	if (analisado.indirect <= 0) return (length-remanescente);
 	/* Se chegou aqui ja percorreu todos os blocos diretos. Pega os indiretos */
@@ -671,7 +667,6 @@ int fs_read( int inumber, char *data, int length, int offset )
 			/* Se o tamanho que falta e menor que o tamanho do bloco */
 			if (remanescente < DISK_BLOCK_SIZE) {
 				/* Pega "remanescente" bytes do direct */
-				//cout << "\nCopiando " << remanescente << " bytes do bloco indireto " << indirect_base.pointers[i] << endl;
 				copy(indirect_block.data,indirect_block.data+remanescente,data+pos);
 				return (length);
 			}
@@ -684,7 +679,6 @@ int fs_read( int inumber, char *data, int length, int offset )
 			remanescente -= DISK_BLOCK_SIZE;
 		}
 	}
-	//cout << "retornou " << length  << endl;
 	return (length);
 }
 
@@ -703,8 +697,7 @@ int fs_write( int inumber, const char *data, int length, int offset )
 		return 0;
 	}
 
-	cout<<"length: "<<length<<endl;
-	cout<<"livre: "<<espacoLivre()<<endl;
+	
 
 	fs_inode inode_block;		//bloco de inodo
 	fs_block indirect_block;	//bloco indiretos
@@ -728,28 +721,20 @@ int fs_write( int inumber, const char *data, int length, int offset )
 	//verifica espaço disponível:
 	if (length > espacoLivre() || length > (espacoLivre() - offset))
 	{
-		cout<<"tamanho maior que espaço livre \n livre: "<<espacoLivre()<<endl;
 		//atualiza tamanho de acordo com espaço disponível:
 		length = espacoLivre() - offset;
-		cout<<"tamanho atualizado: "<<length<<endl;
 	}
-	cout<<"lendo inodo: "<<inumber<<endl;
 	remanescente = length;
-	cout<<"faltam gravar: "<<remanescente<<endl;
 	capacity = inode_block.size;
-	cout<<"capacidade: "<<capacity<<endl;
 
 	//enquanto não hover espaço, será preciso "alocar":
 	while (capacity < (length+offset)) {
 		flag=0;
-		cout<<"capacidade menor que o necessário"<<endl;
 		nblock = blocoDisponivel();
 		if (nblock == 0)
 		{
-			cout<<"nenhum bloco disponivel"<<endl;
 			return 0;
 		} 
-		cout<<"bloco disponivel: "<<nblock<<endl;
 		//percorro os ponteiros diretos que ele tem:
 		for(i=0;i<POINTERS_PER_INODE;i++)
 		{
@@ -762,8 +747,6 @@ int fs_write( int inumber, const char *data, int length, int offset )
 				bitmap[nblock]=true;
 				//amplia a capacidade do inodo:
 				capacity += DISK_BLOCK_SIZE;
-				cout<<"bloco alocado: "<<nblock<<endl;
-				cout<<"nova capacidade: "<<capacity<<endl;
 				//sinaliza que alocou o suficiente:
 				flag=1;
 				//sai do for:
@@ -786,8 +769,6 @@ int fs_write( int inumber, const char *data, int length, int offset )
 					bitmap[nblock] = true;
 					//amplia a capacidade do inodo:
 					capacity += DISK_BLOCK_SIZE;
-					cout<<"bloco indiretamente alocado: "<<nblock<<endl;
-					cout<<"nova capacidade: "<<capacity<<endl;
 					//sai do for:
 					break;
 				}
@@ -800,7 +781,6 @@ int fs_write( int inumber, const char *data, int length, int offset )
 	/* Atualiza o tamanho do arquivo se o novo tamanho for maior */
     if (inode_block.size < offset + length) inode_block.size = offset + length;
 
-	cout<<"fim da alocação \n nova capacidade: "<<inode_block.size<<endl;
 	//salva a informação do inodo:
 	inode_save(inumber,inode_block);
 
@@ -808,7 +788,6 @@ int fs_write( int inumber, const char *data, int length, int offset )
 	i0 = offset/DISK_BLOCK_SIZE;
 	//salva o inicial:
 	inicial=i0;
-	cout << "Primeiro bloco analisado: " << inode_block.direct[i0] << endl;
 	//encontra posicao inicial:
 	pos = offset%DISK_BLOCK_SIZE;
 	//se for um direto:
@@ -831,27 +810,22 @@ int fs_write( int inumber, const char *data, int length, int offset )
 					//retorna sucesso:
 					return length;
 				}
-				cout << "escrevendo no bloco " << inode_block.direct[i] << endl;
 				//se tudo cabe no bloco:
 				if (remanescente <= DISK_BLOCK_SIZE)
 				{
-					cout<<"Cabe em um bloco"<<endl;
 					//se for o primeiro bloco:
 					if(i==inicial){
 						//copia os dados considerando o offset:
 						copy(data+pos, data+pos+remanescente , (data_block.data)+pos);
-						cout<<"primeiro bloco copiado"<<endl;
 					}
 					//se não for o primeiro bloco:
 					else
 					{
 						//copia os dados não considerando o offset:
 						copy(data+pos, data+pos+remanescente , data_block.data);
-						cout<<"bloco copiado"<<endl;
 					}
 					//grava bloco no disco:
 					disk_write(inode_block.direct[i],data_block.data);
-					cout<<"bloco gravado"<<endl;
 					//atualiza bitmap:
 					//bitmap[inode_block.direct[i]] = true;
 					//atualiza tamanho do inodo:
@@ -859,19 +833,15 @@ int fs_write( int inumber, const char *data, int length, int offset )
 					//grava o inodo:
 					inode_save(inumber,inode_block);
 					//retorna sucesso:
-					cout<<"saindo"<<endl;
-					cout<<length<<endl;
 					return length;
 				}
 				//se for escrever em mais blocos:
 				else
 				{
-					cout<<"Não cabe em um bloco"<<endl;
 					//se for o primeiro bloco:
 					if(i==inicial){
 						//copia os dados considerando o offset:
 						copy(data+pos, data+pos+remanescente , (data_block.data)+pos);
-						cout<<"primeiro bloco copiado"<<endl;
 						//atualiza remanescente considerando offset:
 						//remanescente -= (DISK_BLOCK_SIZE-pos);
 					}
@@ -880,7 +850,6 @@ int fs_write( int inumber, const char *data, int length, int offset )
 					{
 						//copia os dados não considerando o offset:
 						copy(data+pos, data+pos+remanescente , data_block.data);
-						cout<<"bloco copiado"<<endl;
 						//atualiza remanescente não considerando offset:
 						//remanescente -= DISK_BLOCK_SIZE;
 					}
@@ -890,7 +859,6 @@ int fs_write( int inumber, const char *data, int length, int offset )
 				 	remanescente -= DISK_BLOCK_SIZE;
 					//grava bloco no disco:
 					disk_write(inode_block.direct[i], data_block.data);
-					cout<<remanescente<<"bloco gravado"<<endl;
 					//atualiza bitmap:
 					//bitmap[inode_block.direct[i]] = true;
 				}
@@ -901,7 +869,6 @@ int fs_write( int inumber, const char *data, int length, int offset )
 	}
 	//agora percorre os indiretos, se o primeiro for o primeiro ele vem direto pra ca, se não só se não gravou tudo em indireto:
 	for (i=i0; i < POINTERS_PER_BLOCK; i++){
-		cout<<"entrando nos indiretos  "<<i0<<endl;
 		//verifica se é válido:
 		if(indirect_block.pointers[i]>super_block.super.ninodeblocks && indirect_block.pointers[i]<super_block.super.nblocks) 
 		{
@@ -918,23 +885,19 @@ int fs_write( int inumber, const char *data, int length, int offset )
 			//se tudo cabe no bloco:
 			if (remanescente <= DISK_BLOCK_SIZE)
 			{
-				cout<<"Cabe em um bloco indireto"<<endl;
 				//se for o primeiro bloco:
 				if(i==inicial){
 					//copia os dados considerando o offset:
 					copy(data+pos, data+pos+remanescente , (data_block.data)+pos);
-					cout<<"primeiro bloco copiado"<<endl;
 				}
 				//se não for o primeiro bloco:
 				else
 				{
 					//copia os dados não considerando o offset:
 					copy(data+pos, data+pos+remanescente , data_block.data);
-					cout<<"bloco copiado"<<endl;
 				}
 				//grava bloco no disco:
 				disk_write(indirect_block.pointers[i],data_block.data);
-				cout<<"bloco gravado"<<endl;
 				//atualiza bitmap:
 				//bitmap[inode_block.direct[i]] = true;
 				//atualiza tamanho do inodo:
@@ -947,12 +910,10 @@ int fs_write( int inumber, const char *data, int length, int offset )
 			//se for escrever em mais blocos:
 			else
 			{
-				cout<<"Não em um bloco cabe em um bloco indireto"<<endl;
 				//se for o primeiro bloco:
 				if(i==inicial){
 					//copia os dados considerando o offset:
 					copy(data+pos, data+pos+remanescente , (data_block.data)+pos);
-					cout<<"primeiro bloco copiado"<<endl;
 					//atualiza remanescente considerando offset:
 					//remanescente -= (DISK_BLOCK_SIZE-pos);
 				}
@@ -961,7 +922,6 @@ int fs_write( int inumber, const char *data, int length, int offset )
 				{
 					//copia os dados não considerando o offset:
 					copy(data+pos, data+pos+remanescente , data_block.data);
-					cout<<"bloco copiado"<<endl;
 					//atualiza remanescente não considerando offset:
 					//remanescente -= DISK_BLOCK_SIZE;
 				}
@@ -971,7 +931,6 @@ int fs_write( int inumber, const char *data, int length, int offset )
 			 	remanescente -= DISK_BLOCK_SIZE;
 				//grava bloco no disco:
 				disk_write(indirect_block.pointers[i],data_block.data);
-				cout<<"bloco copiado"<<endl;
 				//atualiza bitmap:
 				//bitmap[inode_block.direct[i]] = true;
 			}
