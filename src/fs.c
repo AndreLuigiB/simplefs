@@ -269,7 +269,7 @@ void fs_debug()
 	cout<<"    "<<block.super.nblocks<<" blocks"<<endl;
 	cout<<"    "<<block.super.ninodeblocks<<" inode blocks"<<endl;;
 	cout<<"    "<<block.super.ninodes<<" inodes"<<endl;;
-
+	cout<<"    "<<espacoLivre()<<" Livre"<<endl;;
 
 	int i,j,k;
 	int num_inodos_percorridos = 0;
@@ -809,6 +809,7 @@ int fs_write( int inumber, const char *data, int length, int offset )
 	if (i0 < POINTERS_PER_INODE) {
 		//percorre blocos diretos:
 		for (i = i0; i < POINTERS_PER_INODE; i++){
+			if (i>POINTERS_PER_INODE) return 0;
 			//verifica se é válido:
 			if (inode_block.direct[i] > 0) 
 			{
@@ -832,7 +833,7 @@ int fs_write( int inumber, const char *data, int length, int offset )
 					//se for o primeiro bloco:
 					if(i==inicial){
 						//copia os dados considerando o offset:
-						copy(data+pos, data+pos+remanescente , data_block.data+pos);
+						copy(data+pos, data+pos+remanescente , (data_block.data)+pos);
 						cout<<"primeiro bloco copiado"<<endl;
 					}
 					//se não for o primeiro bloco:
@@ -863,7 +864,7 @@ int fs_write( int inumber, const char *data, int length, int offset )
 					//se for o primeiro bloco:
 					if(i==inicial){
 						//copia os dados considerando o offset:
-						copy(data+pos, data+pos+remanescente , data_block.data+pos);
+						copy(data+pos, data+pos+remanescente , (data_block.data)+pos);
 						cout<<"primeiro bloco copiado"<<endl;
 						//atualiza remanescente considerando offset:
 						//remanescente -= (DISK_BLOCK_SIZE-pos);
@@ -882,8 +883,8 @@ int fs_write( int inumber, const char *data, int length, int offset )
 					//atualiza remanescente não considerando offset:
 				 	remanescente -= DISK_BLOCK_SIZE;
 					//grava bloco no disco:
-					disk_write(inode_block.direct[i],data_block.data);
-					cout<<"bloco gravado"<<endl;
+					disk_write(inode_block.direct[i], data_block.data);
+					cout<<remanescente<<"bloco gravado"<<endl;
 					//atualiza bitmap:
 					//bitmap[inode_block.direct[i]] = true;
 				}
@@ -893,7 +894,7 @@ int fs_write( int inumber, const char *data, int length, int offset )
 		//i0 -= POINTERS_PER_INODE;
 	}
 	//agora percorre os indiretos, se o primeiro for o primeiro ele vem direto pra ca, se não só se não gravou tudo em indireto:
-	for (i=i0; i < POINTERS_PER_INODE; i++){
+	for (i=i0; i < POINTERS_PER_BLOCK; i++){
 		cout<<"entrando nos indiretos  "<<i0<<endl;
 		//verifica se é válido:
 		if(indirect_block.pointers[i]>super_block.super.ninodeblocks && indirect_block.pointers[i]<super_block.super.nblocks) 
@@ -915,7 +916,7 @@ int fs_write( int inumber, const char *data, int length, int offset )
 				//se for o primeiro bloco:
 				if(i==inicial){
 					//copia os dados considerando o offset:
-					copy(data+pos, data+pos+remanescente , data_block.data+pos);
+					copy(data+pos, data+pos+remanescente , (data_block.data)+pos);
 					cout<<"primeiro bloco copiado"<<endl;
 				}
 				//se não for o primeiro bloco:
@@ -926,7 +927,7 @@ int fs_write( int inumber, const char *data, int length, int offset )
 					cout<<"bloco copiado"<<endl;
 				}
 				//grava bloco no disco:
-				disk_write(inode_block.direct[i],data_block.data);
+				disk_write(indirect_block.pointers[i],data_block.data);
 				cout<<"bloco gravado"<<endl;
 				//atualiza bitmap:
 				//bitmap[inode_block.direct[i]] = true;
@@ -944,7 +945,7 @@ int fs_write( int inumber, const char *data, int length, int offset )
 				//se for o primeiro bloco:
 				if(i==inicial){
 					//copia os dados considerando o offset:
-					copy(data+pos, data+pos+remanescente , data_block.data+pos);
+					copy(data+pos, data+pos+remanescente , (data_block.data)+pos);
 					cout<<"primeiro bloco copiado"<<endl;
 					//atualiza remanescente considerando offset:
 					//remanescente -= (DISK_BLOCK_SIZE-pos);
@@ -963,7 +964,7 @@ int fs_write( int inumber, const char *data, int length, int offset )
 				//atualiza remanescente não considerando offset:
 			 	remanescente -= DISK_BLOCK_SIZE;
 				//grava bloco no disco:
-				disk_write(inode_block.direct[i],data_block.data);
+				disk_write(indirect_block.pointers[i],data_block.data);
 				cout<<"bloco copiado"<<endl;
 				//atualiza bitmap:
 				//bitmap[inode_block.direct[i]] = true;
